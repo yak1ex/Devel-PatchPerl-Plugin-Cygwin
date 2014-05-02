@@ -1,0 +1,4 @@
+.build/
+Devel-PatchPerl-Plugin-Cygwin-*.tar.gz
+Devel-PatchPerl-Plugin-Cygwin-*/
+*.BAK
