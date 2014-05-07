@@ -12,12 +12,14 @@ use File::Spec;
 my @patch = (
 	{
 		perl => [
+# FIXME: Too tight specification
 			qr/^5\.10\.1$/,
 			qr/^5\.19\.8$/,
 		],
 		subs => [ [ \&_patch_cygwin_c_stdio ] ],
 	},
 	{
+# FIXME: Too tight specification
 		perl => [ qr/^5\.10\.1$/ ],
 		subs => [ [ \&_patch_cygwin17 ] ],
 	},
@@ -440,6 +442,27 @@ __END__
 
 =head1 SYNOPSIS
 
+  # for bash etc.
+  $ export PERL5_PATCHPERL_PLUGIN=Cygwin
+  # for tcsh etc.
+  % setenv PERL5_PATCHPERL_PLUGIN=Cygwin
+
+  # After that, use patchperl, for example, via perlbrew
+  $ perlbrew install perl-5.10.1
+
 =head1 DESCRIPTION
+
+This module is a plugin module for L<Devel::PatchPerl> for the Cygwin environment.
+It might be better to be included in original because it is not for variant but for environment.
+The Cygwin environment is, however, relatively minor and tricky environment.
+So, this module is provided as a plugin in order to try patches unofficially and experimentally.
+
+B<NOTE: This module is NOT yet checked for sufficient versions of perls.>
+
+=head1 SEE ALSO
+
+=for :list
+* L<Devel::PatchPerl::Plugin>
+* L<App::perlbrew>
 
 =cut
