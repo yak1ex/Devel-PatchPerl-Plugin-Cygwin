@@ -445,7 +445,7 @@ __END__
   # for bash etc.
   $ export PERL5_PATCHPERL_PLUGIN=Cygwin
   # for tcsh etc.
-  % setenv PERL5_PATCHPERL_PLUGIN=Cygwin
+  % setenv PERL5_PATCHPERL_PLUGIN Cygwin
 
   # After that, use patchperl, for example, via perlbrew
   $ perlbrew install perl-5.10.1
