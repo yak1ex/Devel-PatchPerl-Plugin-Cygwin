@@ -29,6 +29,8 @@ sub patchperl
 {
 	return unless $^O eq 'cygwin';
 
+# TODO: Warn environment variables including parens.
+
 	require Devel::PatchPerl;
 # Devel::PatchPerl::_patch(),_is() are NOT a public interface, so the existence SHOULD NOT be relied
 	if(! defined *Devel::PatchPerl::_patch{CODE} || ! defined *Devel::PatchPerl::_is{CODE}) {
