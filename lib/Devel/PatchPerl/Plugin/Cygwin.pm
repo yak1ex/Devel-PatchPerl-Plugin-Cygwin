@@ -23,6 +23,16 @@ my @patch = (
 		perl => [ qr/^5\.10\.1$/ ],
 		subs => [ [ \&_patch_cygwin17 ] ],
 	},
+# FIXME: Too tight specificaiton
+#	{
+#		perl => [ qr/^5\.8\.0$/ ],
+#		subs => [ [ \&_patch_cygwin_ld2 ] ],
+#	},
+# FIXME: Need to confirm version specificaiton
+	{
+		perl => [ qr/^5\.8\.[0-8]$/ ],
+		subs => [ [ \&_patch_cygwin_ld2_ ] ],
+	},
 );
 
 sub patchperl
@@ -440,7 +450,353 @@ sub _patch_cygwin17
 END
 }
 
-1;
+sub _patch_cygwin_ld2
+{
+	Devel::PatchPerl::_patch(<<'END');
+--- cygwin/Makefile.SHs.orig	2002-06-02 02:02:50.000000000 +0900
++++ cygwin/Makefile.SHs	2014-05-11 13:42:29.165108100 +0900
+@@ -32,12 +32,13 @@
+ ld2: $& Makefile perlld ${src}/cygwin/ld2.in
+ 	@echo "extracting ld2 (with variable substitutions)"
+ 	@$sed s,@buildpath@,$addtopath,g <${src}/cygwin/ld2.in >ld2
+-	@echo "installing ld2 into $installbin"
++	chmod +x ld2
++#	@echo "installing ld2 into $installbin"
+ # install is included in Cygwin distributions, and we make a note of th
+ # requirement in the README.cygwin file. However, let's give them
+ # a warning.
+-	@/usr/bin/install -c -m 755 ld2 ${installbin}/ld2
+-	@if test ! -f  ${installbin}/ld2; then \
++#	@/usr/bin/install -c -m 755 ld2 ${installbin}/ld2
++#	@if test ! -f  ${installbin}/ld2; then \
+ 		echo "*************************************************" ; \
+ 		echo "Make will probably fail in a few more steps." ; \
+ 		echo "When it does, copy \"ld2\" to a directory in" ; \
+@@ -107,7 +108,7 @@
+ 
+ # dll and import library
+ $(LIBPERL).dll$(LIB_EXT): $& perl$(OBJ_EXT) $(cwobj) ld2
+-	$(LDLIBPTH) ld2 $(SHRPLDFLAGS) -o $(LIBPERL)$(DLSUFFIX) \
++	$(LDLIBPTH) ./ld2 $(SHRPLDFLAGS) -o $(LIBPERL)$(DLSUFFIX) \
+ 	perl$(OBJ_EXT) $(cwobj) $(libs)
+ 
+ # How to build executables.
+END
+}
+
+sub _patch_cygwin_ld2_
+{
+	my @adjust = (
+		[ qr/^5\.8\.7$/, sub { $_[0] =~ s/ \|\| \$Is_VMS//; } ],
+	);
+	my $patch = <<'END'; $_->[1]->($patch) for grep { Devel::PatchPerl::_is( $_->[0], $_[0] ) } @adjust; Devel::PatchPerl::_patch($patch);
+--- cygwin/Makefile.SHs.orig	2004-09-10 18:30:39.000000000 +0900
++++ cygwin/Makefile.SHs	2008-03-12 05:46:24.000000000 +0900
+@@ -3,8 +3,8 @@
+ 
+ # Rerun `sh Makefile.SH; make depend' after making any change.
+ 
+-# Additional rules supported: libperls.a (for static linking),
+-# ld2, perlld (dynamic linking tools)
++# Additional rules supported: libperl.a (for static linking),
++# ld2 and perlld removed
+ #
+ 
+ #! /bin/sh
+@@ -22,73 +22,33 @@
+ 	;;
+ esac
+ 
+-addtopath=`pwd`
++addtopath=`pwd | sed -e 's/ /\\\ /g'`
+ $spitshell >>Makefile <<!GROK!THIS!
+ 
+ cygwin.c: cygwin/cygwin.c
+ 	\$(LNS) cygwin/cygwin.c
+ 
+-# shell script feeding perlld to decent perl
+-ld2: $& Makefile perlld ${src}/cygwin/ld2.in
+-	@echo "extracting ld2 (with variable substitutions)"
+-	@$sed s,@buildpath@,$addtopath,g <${src}/cygwin/ld2.in >ld2
+-	@chmod a+x ld2
+-	@echo "installing ld2 into $installbin"
+-# install is included in Cygwin distributions, and we make a note of th
+-# requirement in the README.cygwin file. However, let's give them
+-# a warning.
+-	@/usr/bin/install -c -m 755 ld2 ${installbin}/ld2
+-	@if test ! -f  ${installbin}/ld2; then \
+-		echo "*************************************************" ; \
+-		echo "Make will probably fail in a few more steps." ; \
+-		echo "When it does, copy \"ld2\" to a directory in" ; \
+-		echo "your path, other than \".\"." ; \
+-		echo "\"/usr/local/bin\" or something similar will do." ; \
+-		echo "Then restart make." ; \
+-		echo "*************************************************" ; \
+-	fi
+-
+-!GROK!THIS!
+-
+-$spitshell >>Makefile <<!GROK!THIS!
+-
+-# perlld parameters
+-#
+-# these ones are mandatory
+-DLLWRAP = 'dllwrap'
+-VERSION = '$version'
+-
+-# following are optional.
+-WRAPDRIVER = gcc
+-DLLTOOL = dlltool
+-EXPORT_ALL = 1
+-
+-# if some of extensions are empty,
+-# no corresponding output will be done.
+-# most probably, you'd like to have an export library
+-DEF_EXT = .def
+-EXP_EXT = .exp
+-
+-perlld: $& Makefile ${src}/cygwin/perlld.in
+-	@echo "extracting perlld (with variable substitutions)"
+-	@$sed -e s,@CC@,\${CC}, -e s,@DLLWRAP@,\${DLLWRAP},g \\
+-	-e s,@WRAPDRIVER@,\${WRAPDRIVER},g -e s,@DLLTOOL@,\${DLLTOOL},g \\
+-	-e s,@AS@,\${AS},g -e s,@EXPORT_ALL@,\${EXPORT_ALL},g \\
+-	-e s,@DEF_EXT@,\${DEF_EXT},g -e s,@EXP_EXT@,\${EXP_EXT},g \\
+-	-e s,@LIB_EXT@,\${LIB_EXT},g -e s,@VERSION@,\${VERSION},g \\
+-	${src}/cygwin/perlld.in >perlld
+-
+ !GROK!THIS!
+ 
+ # make sure that all library names are not malformed
+ libperl=`echo $libperl|sed -e s,\\\..*,,`
+-
+ linklibperl=-l`echo $libperl|sed -e s,^lib,,`
++vers=`echo $version|tr '.' '_'`
++dllname=`echo $libperl|sed -e s,^lib,cyg,``echo $vers|sed -e s,_[0-9]$,,`
++# append "d" suffix to -DDEBUGGING build: cygperl5_10d.dll
++case $config_args in
++  *DEBUGGING*)
++      dllname="${dllname}"d
++      ;;
++esac
+ 
+ $spitshell >>Makefile <<!GROK!THIS!
+ LIBPERL = $libperl
+ LLIBPERL= $linklibperl
++DLLNAME= $dllname
+ CLDFLAGS= -L$addtopath $ldflags
++LDDLFLAGS = --shared -L$addtopath $ldflags
++PLDLFLAGS = 
+ CAT = $cat
+ AWK = $awk
+ !GROK!THIS!
+@@ -104,13 +64,13 @@
+ 
+ # library used to make statically linked executables
+ # miniperl is linked against it to avoid libperl.dll locking
+-$(LIBPERL)$(LIB_EXT): $& perl$(OBJ_EXT) $(cwobj)
+-	$(AR) rcu $@ perl$(OBJ_EXT) $(cwobj)
++$(LIBPERL)$(LIB_EXT): $& $(cwobj)
++	$(AR) rcu $@ $(cwobj)
+ 
+ # dll and import library
+-$(LIBPERL).dll$(LIB_EXT): $& perl$(OBJ_EXT) $(cwobj) ld2
+-	$(LDLIBPTH) ld2 $(SHRPLDFLAGS) -o $(LIBPERL)$(DLSUFFIX) \
+-	perl$(OBJ_EXT) $(cwobj) $(libs)
++$(LIBPERL).dll$(LIB_EXT): $& $(cwobj)
++	$(LDLIBPTH) $(CC) $(SHRPLDFLAGS) -o $(DLLNAME)$(DLSUFFIX) -Wl,--out-implib=$@ \
++	$(cwobj) $(libs)
+ 
+ # How to build executables.
+ 
+@@ -122,7 +82,7 @@
+ 
+ miniperl.exe \
+ miniperl: $& miniperlmain$(OBJ_EXT) $(LIBPERL)$(LIB_EXT) opmini$(OBJ_EXT)
+-	$(LDLIBPTH) $(CC) $(CLDFLAGS) -o miniperl miniperlmain$(OBJ_EXT) opmini$(OBJ_EXT) $(LLIBPERL) $(libs)
++	$(LDLIBPTH) $(CC) $(CLDFLAGS) -o miniperl miniperlmain$(OBJ_EXT) opmini$(OBJ_EXT) $(LIBPERL)$(LIB_EXT) $(libs)
+ 	$(LDLIBPTH) ./miniperl -w -Ilib -MExporter -e '<?>' || $(MAKE) minitest
+ 
+ perl.exe \
+@@ -145,8 +105,8 @@
+ cwobj = $(obj)
+ 
+ # perl library
+-$(LIBPERL)$(LIB_EXT): $& perl$(OBJ_EXT) $(cwobj)
+-	$(AR) rcu $@ perl$(OBJ_EXT) $(cwobj)
++$(LIBPERL)$(LIB_EXT): $& $(cwobj)
++	$(AR) rcu $@ $(cwobj)
+ 
+ # How to build executables.
+ 
+@@ -202,7 +162,9 @@
+ 
+ distdir: miniperl
+ 	-mkdir $(DIST_DIRECTORY)
+-	./miniperl '-MExtUtils::Manifest' \
++	./miniperl -Ilib '-MExtUtils::Manifest' \
+ 	-e "ExtUtils::Manifest::manicopy(ExtUtils::Manifest::maniread(),'$(DIST_DIRECTORY)')"
+ 
++test_prep: 
++
+ !NO!SUBS!
+--- hints/cygwin.sh.orig	2014-05-12 01:31:55.334217700 +0900
++++ hints/cygwin.sh	2014-05-12 01:32:24.439127900 +0900
+@@ -63,11 +63,11 @@
+ esac
+ 
+ # compile Win32CORE "module" as static. try to avoid the space.
+-if test -z "$static_ext"; then
+-  static_ext="Win32CORE"
+-else
+-  static_ext="$static_ext Win32CORE"
+-fi
++#if test -z "$static_ext"; then
++#  static_ext="Win32CORE"
++#else
++#  static_ext="$static_ext Win32CORE"
++#fi
+ 
+ # Win9x problem with non-blocking read from a closed pipe
+ d_eofnblk='define'
+--- Makefile.SH.orig	2006-01-24 21:49:44.000000000 +0900
++++ Makefile.SH	2014-05-12 02:22:56.994353100 +0900
+@@ -361,7 +361,7 @@
+ c = $(c1) $(c2) $(c3) $(c4) miniperlmain.c perlmain.c opmini.c
+ 
+ obj1 = $(mallocobj) gv$(OBJ_EXT) toke$(OBJ_EXT) perly$(OBJ_EXT) op$(OBJ_EXT) pad$(OBJ_EXT) regcomp$(OBJ_EXT) dump$(OBJ_EXT) util$(OBJ_EXT) mg$(OBJ_EXT) reentr$(OBJ_EXT)
+-obj2 = hv$(OBJ_EXT) av$(OBJ_EXT) run$(OBJ_EXT) pp_hot$(OBJ_EXT) sv$(OBJ_EXT) pp$(OBJ_EXT) scope$(OBJ_EXT) pp_ctl$(OBJ_EXT) pp_sys$(OBJ_EXT)
++obj2 = hv$(OBJ_EXT) av$(OBJ_EXT) perl$(OBJ_EXT) run$(OBJ_EXT) pp_hot$(OBJ_EXT) sv$(OBJ_EXT) pp$(OBJ_EXT) scope$(OBJ_EXT) pp_ctl$(OBJ_EXT) pp_sys$(OBJ_EXT)
+ obj3 = doop$(OBJ_EXT) doio$(OBJ_EXT) regexec$(OBJ_EXT) utf8$(OBJ_EXT) taint$(OBJ_EXT) deb$(OBJ_EXT) universal$(OBJ_EXT) xsutils$(OBJ_EXT) globals$(OBJ_EXT) perlio$(OBJ_EXT) perlapi$(OBJ_EXT) numeric$(OBJ_EXT) locale$(OBJ_EXT) pp_pack$(OBJ_EXT) pp_sort$(OBJ_EXT)
+ 
+ obj = $(obj1) $(obj2) $(obj3) $(ARCHOBJS)
+@@ -496,9 +496,9 @@
+ LIBPERL_NONSHR		= libperl_nonshr$(LIB_EXT)
+ MINIPERL_NONSHR		= miniperl_nonshr$(EXE_EXT)
+ 
+-$(LIBPERL_NONSHR): perl$(OBJ_EXT) $(obj)
++$(LIBPERL_NONSHR): $(obj)
+ 	$(RMS) $(LIBPERL_NONSHR)
+-	$(AR) rcu $(LIBPERL_NONSHR) perl$(OBJ_EXT) $(obj)
++	$(AR) rcu $(LIBPERL_NONSHR) $(obj)
+ 
+ $(MINIPERL_NONSHR): $(LIBPERL_NONSHR) miniperlmain$(OBJ_EXT) opmini$(OBJ_EXT)
+ 	$(CC) $(LDFLAGS) -o $(MINIPERL_NONSHR) miniperlmain$(OBJ_EXT) \
+@@ -545,12 +545,12 @@
+ !GROK!THIS!
+ else
+ 	$spitshell >>Makefile <<'!NO!SUBS!'
+-$(LIBPERL): $& perl$(OBJ_EXT) $(obj) $(LIBPERLEXPORT)
++$(LIBPERL): $& $(obj) $(LIBPERLEXPORT)
+ !NO!SUBS!
+ 	case "$useshrplib" in
+ 	true)
+ 		$spitshell >>Makefile <<'!NO!SUBS!'
+-	$(LD) -o $@ $(SHRPLDFLAGS) perl$(OBJ_EXT) $(obj) $(libs)
++	$(LD) -o $@ $(SHRPLDFLAGS) $(obj) $(libs)
+ !NO!SUBS!
+ 		case "$osname" in
+ 		aix)
+@@ -565,7 +565,7 @@
+ 	*)
+ 		$spitshell >>Makefile <<'!NO!SUBS!'
+ 	rm -f $(LIBPERL)
+-	$(AR) rcu $(LIBPERL) perl$(OBJ_EXT) $(obj)
++	$(AR) rcu $(LIBPERL) $(obj)
+ 	@$(ranlib) $(LIBPERL)
+ !NO!SUBS!
+ 		;;
+@@ -590,7 +590,7 @@
+ miniperl: $& miniperlmain$(OBJ_EXT) $(LIBPERL) opmini$(OBJ_EXT)
+ 	$(CC) -o miniperl $(CLDFLAGS) \
+ 	    `echo $(obj) | sed 's/ op$(OBJ_EXT) / /'` \
+-	    miniperlmain$(OBJ_EXT) opmini$(OBJ_EXT) perl$(OBJ_EXT) $(libs)
++	    miniperlmain$(OBJ_EXT) opmini$(OBJ_EXT) $(libs)
+ 	$(LDLIBPTH) ./miniperl -w -Ilib -MExporter -e '<?>' || $(MAKE) minitest
+ !NO!SUBS!
+ 		;;
+@@ -598,7 +598,7 @@
+ 		$spitshell >>Makefile <<'!NO!SUBS!'
+ miniperl: $& miniperlmain$(OBJ_EXT) $(LIBPERL) opmini$(OBJ_EXT)
+ 	$(CC) -o miniperl `echo $(obj) | sed 's/ op$(OBJ_EXT) / /'` \
+-	    miniperlmain$(OBJ_EXT) opmini$(OBJ_EXT) perl$(OBJ_EXT) $(libs)
++	    miniperlmain$(OBJ_EXT) opmini$(OBJ_EXT) $(libs)
+ 	$(LDLIBPTH) ./miniperl -w -Ilib -MExporter -e '<?>' || $(MAKE) minitest
+ !NO!SUBS!
+ 		;;
+--- installperl.orig	2006-01-29 00:35:28.000000000 +0900
++++ installperl	2014-05-12 02:41:30.833722700 +0900
+@@ -260,40 +260,9 @@
+ 
+     if ($Is_Cygwin) {
+ 	$perldll = $libperl;
+-	my $v_e_r_s = $ver; $v_e_r_s =~ tr/./_/;
++	my $v_e_r_s = substr($ver,0,-2); $v_e_r_s =~ tr/./_/;
+ 	$perldll =~ s/(\..*)?$/$v_e_r_s.$dlext/;
+ 	$perldll =~ s/^lib/cyg/;
+-	if ($Config{useshrplib} eq 'true') {
+-	    # install ld2 and perlld as well
+-	    foreach ('ld2', 'perlld') {
+-		safe_unlink("$installbin/$_");
+-		copy("$_", "$installbin/$_");
+-		chmod(0755, "$installbin/$_");
+-		$packlist->{"$installbin/$_"} = { type => 'file' };
+-	    };
+-	    open (LD2, ">$installbin/ld2");
+-	    print LD2 <<SHELL;
+-#!/bin/sh
+-#
+-# ld wrapper, passes all args to perlld;
+-#
+-for trythis in $installbin/perl
+-do
+-  if [ -x \$trythis ]
+-  then
+-    \$trythis $installbin/perlld "\$\@"
+-    exit \$?
+-  fi
+-done
+-# hard luck!
+-echo I see no perl executable around there
+-echo perl is required to build dynamic libraries
+-echo look if the path to perl in /bin/ld2 is correct
+-exit 1
+-SHELL
+-	    close LD2;
+-	    chmod(0755, "$installbin/ld2");
+-	};
+     } else {
+ 	$perldll = 'perl58.' . $dlext;
+     }
+@@ -376,6 +345,7 @@
+ # Install library files.
+ 
+ my ($do_installarchlib, $do_installprivlib) = (0, 0);
++my $vershort = $Is_Cygwin ? substr($ver,0,-2) : $ver;
+ 
+ mkpath($installprivlib, $verbose, 0777);
+ mkpath($installarchlib, $verbose, 0777);
+@@ -385,7 +355,7 @@
+ if (chdir "lib") {
+     $do_installarchlib = ! samepath($installarchlib, '.');
+     $do_installprivlib = ! samepath($installprivlib, '.');
+-    $do_installprivlib = 0 if $versiononly && !($installprivlib =~ m/\Q$ver/);
++    $do_installprivlib = 0 if $versiononly && !($installprivlib =~ m/\Q$vershort/);
+ 
+     if ($do_installarchlib || $do_installprivlib) {
+ 	find(\&installlib, '.');
+@@ -589,7 +559,7 @@
+ # ($installprivlib/pods for cygwin).
+ 
+ my $pod = ($Is_Cygwin || $Is_Darwin || $Is_VMS) ? 'pods' : 'pod';
+-if ( !$versiononly || ($installprivlib =~ m/\Q$ver/)) {
++if ( !$versiononly || ($installprivlib =~ m/\Q$vershort/)) {
+     mkpath("${installprivlib}/$pod", $verbose, 0777);
+ 
+     # If Perl 5.003's perldiag.pod is there, rename it.
+END
+}
+
+1
 __END__
 
 =head1 SYNOPSIS
