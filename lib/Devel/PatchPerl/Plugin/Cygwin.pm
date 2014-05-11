@@ -12,14 +12,14 @@ use File::Spec;
 my @patch = (
 	{
 		perl => [
-# FIXME: Too tight specification
 			qr/^5\.10\.1$/,
-			qr/^5\.19\.8$/,
+			qr/^5\.16\.[0-3]$/,
+			qr/^5\.18\.[0-2]$/,
+			qr/^5\.19\.[0-8]$/,
 		],
 		subs => [ [ \&_patch_cygwin_c_stdio ] ],
 	},
 	{
-# FIXME: Too tight specification
 		perl => [ qr/^5\.10\.1$/ ],
 		subs => [ [ \&_patch_cygwin17 ] ],
 	},
@@ -66,6 +66,7 @@ sub _patch_cygwin_c_stdio
  #undef USE_DYNAMIC_LOADING
 END
 }
+
 sub _patch_cygwin17
 {
 	Devel::PatchPerl::_patch(<<'END');
