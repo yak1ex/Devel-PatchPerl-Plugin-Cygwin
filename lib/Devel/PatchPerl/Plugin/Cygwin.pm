@@ -23,15 +23,9 @@ my @patch = (
 		perl => [ qr/^5\.10\.1$/ ],
 		subs => [ [ \&_patch_cygwin17 ] ],
 	},
-# FIXME: Too tight specificaiton
-#	{
-#		perl => [ qr/^5\.8\.0$/ ],
-#		subs => [ [ \&_patch_cygwin_ld2 ] ],
-#	},
-# FIXME: Need to confirm version specificaiton
 	{
 		perl => [ qr/^5\.8\.[0-8]$/ ],
-		subs => [ [ \&_patch_cygwin_ld2_ ] ],
+		subs => [ [ \&_patch_cygwin_ld2 ] ],
 	},
 );
 
@@ -452,42 +446,26 @@ END
 
 sub _patch_cygwin_ld2
 {
-	Devel::PatchPerl::_patch(<<'END');
---- cygwin/Makefile.SHs.orig	2002-06-02 02:02:50.000000000 +0900
-+++ cygwin/Makefile.SHs	2014-05-11 13:42:29.165108100 +0900
-@@ -32,12 +32,13 @@
- ld2: $& Makefile perlld ${src}/cygwin/ld2.in
- 	@echo "extracting ld2 (with variable substitutions)"
- 	@$sed s,@buildpath@,$addtopath,g <${src}/cygwin/ld2.in >ld2
--	@echo "installing ld2 into $installbin"
-+	chmod +x ld2
-+#	@echo "installing ld2 into $installbin"
- # install is included in Cygwin distributions, and we make a note of th
- # requirement in the README.cygwin file. However, let's give them
- # a warning.
--	@/usr/bin/install -c -m 755 ld2 ${installbin}/ld2
--	@if test ! -f  ${installbin}/ld2; then \
-+#	@/usr/bin/install -c -m 755 ld2 ${installbin}/ld2
-+#	@if test ! -f  ${installbin}/ld2; then \
- 		echo "*************************************************" ; \
- 		echo "Make will probably fail in a few more steps." ; \
- 		echo "When it does, copy \"ld2\" to a directory in" ; \
-@@ -107,7 +108,7 @@
- 
- # dll and import library
- $(LIBPERL).dll$(LIB_EXT): $& perl$(OBJ_EXT) $(cwobj) ld2
--	$(LDLIBPTH) ld2 $(SHRPLDFLAGS) -o $(LIBPERL)$(DLSUFFIX) \
-+	$(LDLIBPTH) ./ld2 $(SHRPLDFLAGS) -o $(LIBPERL)$(DLSUFFIX) \
- 	perl$(OBJ_EXT) $(cwobj) $(libs)
- 
- # How to build executables.
-END
-}
-
-sub _patch_cygwin_ld2_
-{
 	my @adjust = (
-		[ qr/^5\.8\.7$/, sub { $_[0] =~ s/ \|\| \$Is_VMS//; } ],
+		[ qr/^5\.8\.[0-7]$/, sub { $_[0] =~ s/ \|\| \$Is_VMS//; } ],
+		[ qr/^5\.8\.[0-5]$/, sub {
+		# cygwin/Makefile.SHs
+			$_[0] =~ s/\@\@ -22,73/@@ -22,72/;
+			$_[0] =~ s/-\t\@chmod a\+x ld2\n//;
+		} ],
+		[ qr/^5\.8\.[0-2]$/, sub {
+		# cygwin/Makefile.SHs
+			$_[0] =~ s/\@\@ -22,72/@@ -22,71/;
+			$_[0] =~ s/these ones are mandatory/this one is pretty mandatory/;
+			$_[0] =~ s/-VERSION = '\$version'\n//;
+			$_[0] =~ s/ -e s,\@VERSION\@,\\\${VERSION},g//;
+		} ],
+		[ qr/^5\.8\.0$/, sub {
+		# Makefile.SH
+			$_[0] =~ s/ pad\$\(OBJ_EXT\)//;
+			$_[0] =~ s/ opmini\.c//;
+			$_[0] =~ s/ \$\(obj\) \$\(libs\)/ \$(obj)/;
+		} ],
 	);
 	my $patch = <<'END'; $_->[1]->($patch) for grep { Devel::PatchPerl::_is( $_->[0], $_[0] ) } @adjust; Devel::PatchPerl::_patch($patch);
 --- cygwin/Makefile.SHs.orig	2004-09-10 18:30:39.000000000 +0900
@@ -723,6 +701,17 @@ sub _patch_cygwin_ld2_
  	$(LDLIBPTH) ./miniperl -w -Ilib -MExporter -e '<?>' || $(MAKE) minitest
  !NO!SUBS!
  		;;
+END
+
+	if($_[0] =~ /^5\.8\.[1-8]$/) {
+		my @adjust = (
+			[ qr/^5\.8\.[1-7]/, sub { $_[0] =~ s/ \|\| \$Is_VMS//; } ],
+			[ qr/^5\.8\.[1-4]/, sub {
+				$_[0] =~ s/\@\@ -260,40/@@ -260,39/;
+				$_[0] =~ s/-\t\t\$packlist->.*\n//;
+			} ],
+		);
+		my $patch = <<'END'; $_->[1]->($patch) for grep { Devel::PatchPerl::_is( $_->[0], $_[0] ) } @adjust; Devel::PatchPerl::_patch($patch);
 --- installperl.orig	2006-01-29 00:35:28.000000000 +0900
 +++ installperl	2014-05-12 02:41:30.833722700 +0900
 @@ -260,40 +260,9 @@
@@ -794,6 +783,60 @@ sub _patch_cygwin_ld2_
  
      # If Perl 5.003's perldiag.pod is there, rename it.
 END
+	} else {
+		Devel::PatchPerl::_patch(<<'END');
+--- installperl.orig	2002-07-17 03:57:32.000000000 +0900
++++ installperl	2014-05-12 11:10:17.032674700 +0900
+@@ -234,29 +234,9 @@
+ 
+   if ($Is_Cygwin) {
+     $perldll = $libperl;
+-    my $v_e_r_s = $ver; $v_e_r_s =~ tr/./_/;
++    my $v_e_r_s = substr($ver,0,-2); $v_e_r_s =~ tr/./_/;
+     $perldll =~ s/(\..*)?$/$v_e_r_s.$dlext/;
+     $perldll =~ s/^lib/cyg/;
+-    if ($Config{useshrplib} eq 'true') {
+-      # install ld2 and perlld as well
+-      foreach ('ld2', 'perlld') {
+-        safe_unlink("$installbin/$_");
+-        copy("$_", "$installbin/$_");
+-        chmod(0755, "$installbin/$_");
+-      };
+-      { 
+-		open (LD2, ">$installbin/ld2");
+-		print LD2 "#!/bin/sh\n#\n# ld wrapper, passes all args to perlld;\n#\n"
+-		          . "for trythis in $installbin/perl\ndo\n  if [ -x \$trythis ]\n"
+-		          . "  then\n    \$trythis $installbin/perlld \"\$\@\"\n"
+-		          . "    exit \$?\n  fi\ndone\n# hard luck!\necho i see no perl"
+-		          . " executable around there\necho perl is required to build "
+-		          . "dynamic libraries\necho look if the path to perl in /bin/ld2"
+-		          . " is correct\nexit 1\n";
+-		close LD2;
+-      };
+-      chmod(0755, "$installbin/ld2");
+-    };
+   } else {
+     $perldll = 'perl58.' . $dlext;
+   }
+@@ -331,6 +311,7 @@
+ # Install library files.
+ 
+ my ($do_installarchlib, $do_installprivlib) = (0, 0);
++my $vershort = $Is_Cygwin ? substr($ver,0,-2) : $ver;
+ 
+ mkpath($installprivlib, $verbose, 0777);
+ mkpath($installarchlib, $verbose, 0777);
+@@ -340,7 +321,7 @@
+ if (chdir "lib") {
+     $do_installarchlib = ! samepath($installarchlib, '.');
+     $do_installprivlib = ! samepath($installprivlib, '.');
+-    $do_installprivlib = 0 if $versiononly && !($installprivlib =~ m/\Q$ver/);
++    $do_installprivlib = 0 if $versiononly && !($installprivlib =~ m/\Q$vershort/);
+ 
+     if ($do_installarchlib || $do_installprivlib) {
+ 	find(\&installlib, '.');
+END
+	}
 }
 
 1
