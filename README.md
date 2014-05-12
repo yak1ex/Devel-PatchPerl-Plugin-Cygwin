@@ -23,20 +23,29 @@ It might be better to be included in original because it is not for variant but 
 The Cygwin environment is, however, relatively minor and tricky environment.
 So, this module is provided as a plugin in order to try patches unofficially and experimentally.
 
+All stable releases on and after 5.8 serires are compilable.
+
+# METHODS
+
+## patchperl
+
+A class method of plugin interface for [Devel::PatchPerl](https://metacpan.org/pod/Devel::PatchPerl). See [Devel::PatchPerl::Plugin](https://metacpan.org/pod/Devel::PatchPerl::Plugin).
+
 # TESTS
 
-If you want to check if patches succeed for all stable releases after 5.8 series, inclusive,
+If you want to check if patches succeed for all stable releases on and after 5.8 series,
 specify the environment variables `PERL5_DPPPC_PATCH_TESTING` and `AUTHOR_TESTING` when testing.
 
-If you have dist tarballs in your perlbrew root, they are used. Otherwise they are downloaded into a temporary directory for each test.
+If you have dist tarballs in your perlbrew root, they are used.
+Otherwise they are downloaded into a temporary directory for each invoking test.
 
 # CAVEAT
 
 [Devel::PatchPerl](https://metacpan.org/pod/Devel::PatchPerl) says as the following:
 
-> [Devel::PatchPerl](https://metacpan.org/pod/Devel::PatchPerl) is intended only to facilitate the "building" of
-> perls, not to facilitate the "testing" of perls. This means that it
-> will not patch failing tests in the perl testsuite.
+    [Devel::PatchPerl](https://metacpan.org/pod/Devel::PatchPerl) is intended only to facilitate the "building" of
+    perls, not to facilitate the "testing" of perls. This means that it
+    will not patch failing tests in the perl testsuite.
 
 This statement is applicable also for this plugin.
 For example, on some versions of perls, it is observed that tests such as op/taint.t and op/threads.t are blocked at the author's environment.
