@@ -866,6 +866,20 @@ specify the environment variables C<PERL5_DPPPC_PATCH_TESTING> and C<AUTHOR_TEST
 
 If you have dist tarballs in your perlbrew root, they are used. Otherwise they are downloaded into a temporary directory for each test.
 
+=head1 CAVEAT
+
+L<Devel::PatchPerl> says as the following:
+
+=over 4
+
+L<Devel::PatchPerl> is intended only to facilitate the "building" of
+perls, not to facilitate the "testing" of perls. This means that it
+will not patch failing tests in the perl testsuite.
+
+=back
+
+This statement is applicable also for this plugin.
+For example, on some versions of perls, it is observed that tests such as op/taint.t and op/threads.t are blocked at the author's environment.
 
 =head1 SEE ALSO
 
