@@ -859,7 +859,13 @@ It might be better to be included in original because it is not for variant but 
 The Cygwin environment is, however, relatively minor and tricky environment.
 So, this module is provided as a plugin in order to try patches unofficially and experimentally.
 
-B<NOTE: This module is NOT yet checked for sufficient versions of perls.>
+=head1 TESTS
+
+If you want to check if patches succeed for all stable releases after 5.8 series, inclusive,
+specify the environment variables C<PERL5_DPPPC_PATCH_TESTING> and C<AUTHOR_TESTING> when testing.
+
+If you have dist tarballs in your perlbrew root, they are used. Otherwise they are downloaded into a temporary directory for each test.
+
 
 =head1 SEE ALSO
 
