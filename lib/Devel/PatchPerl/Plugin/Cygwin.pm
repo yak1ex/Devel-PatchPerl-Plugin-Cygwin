@@ -27,6 +27,15 @@ my @patch = (
 		perl => [ qr/^5\.8\.[0-8]$/ ],
 		subs => [ [ \&_patch_cygwin_ld2 ] ],
 	},
+	{
+		perl => [ 
+			qr/^5\.[68]\./,
+			qr/^5\.1[0-9]\./,
+			qr/^5\.2[0-3]\./,
+			qr/^5\.24\.[0-2]$/,
+		],
+		subs => [ [ \&_patch_cygwin_GNU_SOURCE ] ], # required after libcrypt-devel-2.0-1 but always applying
+	},
 );
 
 sub patchperl
@@ -839,6 +848,23 @@ END
 	}
 }
 
+sub _patch_cygwin_GNU_SOURCE
+{
+	Devel::PatchPerl::_patch(<<'END');
+--- hints/cygwin.sh.orig        2018-05-16 17:14:35.085980800 +0900
++++ hints/cygwin.sh     2018-05-16 18:32:34.356348000 +0900
+@@ -31,7 +31,7 @@
+ man3ext='3pm'
+ test -z "$use64bitint" && use64bitint='define'
+ test -z "$useithreads" && useithreads='define'
+-ccflags="$ccflags -DPERL_USE_SAFE_PUTENV -U__STRICT_ANSI__"
++ccflags="$ccflags -DPERL_USE_SAFE_PUTENV -U__STRICT_ANSI__ -D_GNU_SOURCE"
+ # - otherwise i686-cygwin
+ archname='cygwin'
+
+END
+}
+
 1
 __END__
 
@@ -859,7 +885,15 @@ It might be better to be included in original because it is not for variant but 
 The Cygwin environment is, however, relatively minor and tricky environment.
 So, this module is provided as a plugin in order to try patches unofficially and experimentally.
 
-All stable releases on and after 5.8 serires are compilable.
+As of this writing, it is confirmed that the following versions are compilable with Cygwin 2.10.0.
+
+=over 4
+
+=item * 5.18.4
+
+=item * 5.22.4
+
+=back
 
 =method patchperl
 
