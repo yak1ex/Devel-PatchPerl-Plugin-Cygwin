@@ -458,7 +458,7 @@ sub _patch_cygwin_ld2
 			$_[0] =~ s/\@\@ -22,72/@@ -22,71/;
 			$_[0] =~ s/these ones are mandatory/this one is pretty mandatory/;
 			$_[0] =~ s/-VERSION = '\$version'\n//;
-			$_[0] =~ s/ -e s,\@VERSION\@,\\\${VERSION},g//;
+			$_[0] =~ s/ -e s,\@VERSION\@,\\\$\{VERSION},g//;
 		} ],
 		[ qr/^5\.8\.0$/, sub {
 		# Makefile.SH
