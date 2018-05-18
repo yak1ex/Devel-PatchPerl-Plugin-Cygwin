@@ -49,8 +49,7 @@ my @patch = (
 	},
 	{
 		perl => [ 
-			qr/^5\.6\.2$/, # may need adjustment
-			qr/^5\.8\.[0-9]$/, # may need adjustment
+			qr/^5\.8\.[0-9]$/,
 			qr/^5\.10\.[01]$/,
 			qr/^5\.12\.[0-5]$/,
 			qr/^5\.14\.[0-4]$/,
@@ -890,7 +889,15 @@ END
 
 sub _patch_cygwin_PATH_quote
 {
-	Devel::PatchPerl::_patch(<<'END');
+	my @adjust = (
+		[ [
+			qr/^5\.8\.[0-9]$/,
+			qr/^5\.10\.[01]$/,
+		  ], sub {
+			$_[0] =~ s|\@\@ -1,3 \+1,12 @@|@@ -1,4 +1,13 @@\n #! /bin/sh|;
+		  } ],
+	);
+	my $patch = <<'END'; $_->[1]->($patch) for grep { Devel::PatchPerl::_is( $_->[0], $_[0] ) } @adjust; Devel::PatchPerl::_patch($patch);
 --- Makefile.SH.orig	2013-03-05 00:16:21.000000000 +0900
 +++ Makefile.SH	2018-05-17 14:35:26.914781400 +0900
 @@ -1,3 +1,12 @@
@@ -959,6 +966,10 @@ So, this module is provided as a plugin in order to try patches unofficially and
 As of this writing, it is confirmed that the following versions are compilable with Cygwin 2.10.0.
 
 =over 4
+
+=item * 5.8.9
+
+=item * 5.10.1
 
 =item * 5.12.5
 
